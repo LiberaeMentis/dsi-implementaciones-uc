@@ -1,0 +1,42 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot - Backend",
+            "request": "launch",
+            "mainClass": "com.dsi.laboreos.RegistrarLaboreoEnLotesApplication",
+            "projectName": "registrar-laboreo-en-lotes",
+            "args": "",
+            "envFile": "${workspaceFolder}/java/.env",
+            "cwd": "${workspaceFolder}/java",
+            "vmArgs": "-Dspring.profiles.active=dev"
+        },
+        {
+            "type": "java",
+            "name": "Spring Boot - java-persistencia",
+            "request": "launch",
+            "mainClass": "com.dsi.laboreos.RegistrarLaboreoEnLotesApplication",
+            "args": "",
+            "cwd": "${workspaceFolder}/java-persistencia",
+            "vmArgs": "-Dspring.profiles.active=dev",
+            "projectName": "registrar-laboreo-en-lotes-persistencia"
+        },
+        {
+            "type": "node",
+            "name": "Vite - Frontend",
+            "request": "launch",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run",
+                "dev"
+            ],
+            "cwd": "${workspaceFolder}/front",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": [
+                "<node_internals>/**"
+            ]
+        }
+    ]
+}

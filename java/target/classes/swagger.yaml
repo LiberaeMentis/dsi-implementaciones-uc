@@ -1,0 +1,398 @@
+openapi: 3.0.3
+info:
+  title: API de Registro de Laboreos en Lotes
+  description: API para gestionar el registro de laboreos en lotes de campos
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Servidor local
+
+paths:
+  /laboreos/iniciar:
+    post:
+      summary: Inicia el proceso de registro de laboreos
+      description: Retorna la lista de campos habilitados para seleccionar
+      operationId: opcionRegLaboreoLote
+      tags:
+        - Laboreos
+      responses:
+        '200':
+          description: Lista de campos habilitados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CampoResponse'
+              example:
+                - nombre: "Campo Norte"
+                  cantidadHectareas: 150.5
+                - nombre: "Campo Sur"
+                  cantidadHectareas: 200.0
+
+  /laboreos/seleccionar-campo:
+    post:
+      summary: Selecciona un campo
+      description: Retorna los lotes del campo seleccionado que tienen proyecto de cultivo vigente
+      operationId: tomarSeleccionCampo
+      tags:
+        - Laboreos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeleccionarCampoRequest'
+            example:
+              nombreCampo: "Campo Norte"
+      responses:
+        '200':
+          description: Lista de lotes con proyecto de cultivo vigente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LoteResponse'
+              example:
+                - numero: 1
+                  fechaInicioProyecto: "2024-01-15"
+                - numero: 2
+                  fechaInicioProyecto: "2024-02-01"
+        '404':
+          description: Campo no encontrado o sin lotes con proyecto vigente
+
+  /laboreos/seleccionar-lotes:
+    post:
+      summary: Selecciona múltiples lotes
+      description: Retorna información detallada de los lotes seleccionados, incluyendo cultivo, laboreos realizados y tipos de laboreo disponibles
+      operationId: tomarSeleccionLotes
+      tags:
+        - Laboreos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeleccionarLotesRequest'
+            example:
+              numerosLote: [1, 2, 3]
+      responses:
+        '200':
+          description: Información detallada de los lotes seleccionados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LoteInfoResponse'
+              example:
+                - cultivoNombre: "Trigo"
+                  laboreosRealizados:
+                    - tipoLaboreo: "Arado"
+                      fecha: "2024-01-20T10:30:00"
+                    - tipoLaboreo: "Siembra"
+                      fecha: "2024-01-25T08:00:00"
+                  tiposLaboreoDisponibles:
+                    - nombreTipoLaboreo: "Fertilización"
+                      nombreMomentoLaboreo: "Pre-siembra"
+                    - nombreTipoLaboreo: "Riego"
+                      nombreMomentoLaboreo: "Post-siembra"
+        '404':
+          description: Lotes no encontrados
+
+  /laboreos/seleccionar-laboreo:
+    post:
+      summary: Selecciona los laboreos a realizar
+      description: Guarda las órdenes de laboreo seleccionadas para cada lote
+      operationId: tomarSeleccLaboreo
+      tags:
+        - Laboreos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeleccionarLaboreosRequest'
+            example:
+              laboreosPorLote:
+                - numeroLote: 1
+                  laboreo: ["Fertilización", "Pre-siembra"]
+                - numeroLote: 1
+                  laboreo: ["Riego", "Post-siembra"]
+                - numeroLote: 2
+                  laboreo: ["Arado", "Pre-siembra"]
+      responses:
+        '200':
+          description: Órdenes de laboreo seleccionadas correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+              example:
+                mensaje: "Órdenes de laboreo seleccionadas correctamente"
+
+  /laboreos/fecha-hora:
+    post:
+      summary: Establece fecha y hora de inicio y fin del laboreo
+      description: Valida las fechas y retorna la lista de empleados disponibles
+      operationId: tomarFechaHoraInicioFin
+      tags:
+        - Laboreos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FechaHoraRequest'
+            example:
+              fechaHoraInicio: "2024-02-10T08:00:00"
+              fechaHoraFin: "2024-02-10T17:00:00"
+      responses:
+        '200':
+          description: Lista de empleados disponibles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmpleadoResponse'
+              example:
+                - nombre: "Juan"
+                  apellido: "Pérez"
+                - nombre: "María"
+                  apellido: "González"
+                - nombre: "Carlos"
+                  apellido: "Rodríguez"
+        '400':
+          description: Las fechas no son válidas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              example:
+                error: "Las fechas no son válidas. La fecha de inicio debe ser anterior a la fecha de fin y ambas deben ser anteriores a la fecha actual."
+
+  /laboreos/seleccionar-empleado:
+    post:
+      summary: Selecciona un empleado
+      description: Guarda el empleado seleccionado para realizar los laboreos
+      operationId: tomarSeleccionEmpleado
+      tags:
+        - Laboreos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeleccionarEmpleadoRequest'
+            example:
+              nombreEmpleado: "Juan"
+              apellidoEmpleado: "Pérez"
+      responses:
+        '200':
+          description: Empleado seleccionado correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+              example:
+                mensaje: "Empleado seleccionado correctamente"
+
+  /laboreos/confirmar-registro:
+    post:
+      summary: Confirma el registro de laboreos
+      description: Crea los laboreos y valida que ninguno sea de tipo Siembra ni Cosecha
+      operationId: tomarConfirmacion
+      tags:
+        - Laboreos
+      responses:
+        '200':
+          description: Resultado de la validación
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  esValido:
+                    type: boolean
+                    description: Indica si todos los laboreos son válidos (no son Siembra ni Cosecha)
+              example:
+                esValido: true
+
+  /laboreos/finalizar:
+    post:
+      summary: Finaliza el proceso de registro de laboreos
+      description: Finaliza el caso de uso de registro de laboreos
+      operationId: tomarSeleccionFinalizar
+      tags:
+        - Laboreos
+      responses:
+        '200':
+          description: Registro de laboreos finalizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+              example:
+                mensaje: "Registro de laboreos finalizado"
+
+components:
+  schemas:
+    CampoResponse:
+      type: object
+      properties:
+        nombre:
+          type: string
+          example: "Campo Norte"
+        cantidadHectareas:
+          type: number
+          format: double
+          example: 150.5
+
+    LoteResponse:
+      type: object
+      properties:
+        numero:
+          type: integer
+          example: 1
+        fechaInicioProyecto:
+          type: string
+          format: date
+          example: "2024-01-15"
+
+    SeleccionarCampoRequest:
+      type: object
+      required:
+        - nombreCampo
+      properties:
+        nombreCampo:
+          type: string
+          example: "Campo Norte"
+
+    SeleccionarLotesRequest:
+      type: object
+      required:
+        - numerosLote
+      properties:
+        numerosLote:
+          type: array
+          items:
+            type: integer
+          example: [1, 2, 3]
+
+    LoteInfoResponse:
+      type: object
+      properties:
+        cultivoNombre:
+          type: string
+          example: "Trigo"
+        laboreosRealizados:
+          type: array
+          items:
+            $ref: '#/components/schemas/LaboreoResponse'
+        tiposLaboreoDisponibles:
+          type: array
+          items:
+            $ref: '#/components/schemas/TipoLaboreoResponse'
+
+    LaboreoResponse:
+      type: object
+      properties:
+        tipoLaboreo:
+          type: string
+          example: "Arado"
+        fecha:
+          type: string
+          format: date-time
+          example: "2024-01-20T10:30:00"
+
+    TipoLaboreoResponse:
+      type: object
+      properties:
+        nombreTipoLaboreo:
+          type: string
+          example: "Fertilización"
+        nombreMomentoLaboreo:
+          type: string
+          example: "Pre-siembra"
+
+    SeleccionarLaboreosRequest:
+      type: object
+      required:
+        - laboreosPorLote
+      properties:
+        laboreosPorLote:
+          type: array
+          items:
+            $ref: '#/components/schemas/LaboreoPorLoteRequest'
+
+    LaboreoPorLoteRequest:
+      type: object
+      required:
+        - numeroLote
+        - laboreo
+      properties:
+        numeroLote:
+          type: integer
+          example: 1
+        laboreo:
+          type: array
+          items:
+            type: string
+          minItems: 2
+          maxItems: 2
+          description: Array con [nombreTipoLaboreo, nombreMomentoLaboreo]
+          example: ["Fertilización", "Pre-siembra"]
+
+    FechaHoraRequest:
+      type: object
+      required:
+        - fechaHoraInicio
+        - fechaHoraFin
+      properties:
+        fechaHoraInicio:
+          type: string
+          format: date-time
+          example: "2024-02-10T08:00:00"
+        fechaHoraFin:
+          type: string
+          format: date-time
+          example: "2024-02-10T17:00:00"
+
+    EmpleadoResponse:
+      type: object
+      properties:
+        nombre:
+          type: string
+          example: "Juan"
+        apellido:
+          type: string
+          example: "Pérez"
+
+    SeleccionarEmpleadoRequest:
+      type: object
+      required:
+        - nombreEmpleado
+        - apellidoEmpleado
+      properties:
+        nombreEmpleado:
+          type: string
+          example: "Juan"
+        apellidoEmpleado:
+          type: string
+          example: "Pérez"
+
