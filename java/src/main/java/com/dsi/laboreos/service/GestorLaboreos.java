@@ -13,9 +13,12 @@ import org.springframework.stereotype.Service;
 
 import com.dsi.laboreos.dto.CampoResponse;
 import com.dsi.laboreos.dto.EmpleadoResponse;
+import com.dsi.laboreos.dto.FechaHoraPorLoteRequest;
+import com.dsi.laboreos.dto.LaboreoPorLoteRequest;
 import com.dsi.laboreos.dto.LaboreoResponse;
 import com.dsi.laboreos.dto.LoteInfoResponse;
 import com.dsi.laboreos.dto.LoteResponse;
+import com.dsi.laboreos.dto.SeleccionarEmpleadoPorLaboreoRequest;
 import com.dsi.laboreos.dto.TipoLaboreoResponse;
 import com.dsi.laboreos.model.Campo;
 import com.dsi.laboreos.model.Cultivo;
@@ -44,6 +47,7 @@ public class GestorLaboreos {
     private List<OrdenDeLaboreo> ordenesLaboreo;
     private Campo campoSeleccionado;
     private List<Lote> lotesSeleccionados;
+    private Cultivo cultivoDeLaboreo;
     private Map<Integer, List<OrdenDeLaboreo>> ordenesLaboreoPorLote;
     // Mapa donde la clave es "numeroLote|tipoLaboreo|momentoLaboreo" y el valor es [fechaHoraInicio, fechaHoraFin]
     private Map<String, LocalDateTime[]> fechasPorLaboreo;
@@ -298,9 +302,8 @@ public class GestorLaboreos {
             return new ArrayList<>();
         }
         // Buscar en los lotes del gestor (asumimos que ya son del campo seleccionado)
-        List<Lote> todosLosLotes = campoSeleccionado.buscarLotes();
-        this.lotesSeleccionados = todosLosLotes.stream()
-                .filter(lote -> numerosLote.contains(lote.getNumero()) && lote.tieneProyectoCultivoVigente())
+        this.lotesSeleccionados = lotes.stream()
+                .filter(lote -> numerosLote.contains(lote.getNumero()))
                 .collect(Collectors.toList());
 
         return buscarInfoProyectoVigente(lotesSeleccionados);
@@ -313,6 +316,12 @@ public class GestorLaboreos {
                     if (cultivoNombre == null) {
                         return null;
                     }
+
+                    // Buscar el cultivo por nombre y guardarlo en el atributo
+                    this.cultivoDeLaboreo = cultivos.stream()
+                            .filter(c -> c.getNombre().equals(cultivoNombre))
+                            .findFirst()
+                            .orElse(null);
 
                     List<LaboreoResponse> laboreosRealizados = buscarLaboreosRealizados(lote);
                     List<TipoLaboreoResponse> tiposLaboreoDisponibles = buscarTiposLaboreoParaCultivo(lote);
@@ -342,14 +351,13 @@ public class GestorLaboreos {
                 .collect(Collectors.toList());
     }
 
-    public void tomarSeleccLaboreo(List<com.dsi.laboreos.dto.LaboreoPorLoteRequest> laboreosPorLote) {
+    public void tomarSeleccLaboreo(List<LaboreoPorLoteRequest> laboreosPorLote) {
         ordenesLaboreoPorLote.clear();
         
         if (campoSeleccionado == null || lotesSeleccionados == null || lotesSeleccionados.isEmpty()) {
             return;
         }
         
-        // Crear un mapa de lotes por número para acceso O(1) en lugar de O(n) por cada búsqueda
         Map<Integer, Lote> lotesPorNumero = lotesSeleccionados.stream()
                 .collect(Collectors.toMap(Lote::getNumero, lote -> lote));
         
@@ -357,21 +365,13 @@ public class GestorLaboreos {
             Integer numeroLote = laboreoPorLote.getNumeroLote();
             String[] laboreo = laboreoPorLote.getLaboreo();
             
-            // Buscar en el mapa de lotes seleccionados (acceso O(1))
             Lote lote = lotesPorNumero.get(numeroLote);
             
-            if (lote == null) {
+            if (lote == null || cultivoDeLaboreo == null) {
                 return;
             }
             
-            ProyectoDeCultivo proyecto = lote.conocerProyectoDeCultivoVigente();
-            if (proyecto == null) {
-                return;
-            }
-            
-            Cultivo cultivo = proyecto.getCultivo();
-            
-            OrdenDeLaboreo orden = cultivo.conocerOrdenLaboreo().stream()
+            OrdenDeLaboreo orden = cultivoDeLaboreo.conocerOrdenLaboreo().stream()
                     .filter(o -> o.conocerTipoLaboreo().getNombre().equals(laboreo[0]) &&
                             o.conocerMomentoLaboreo().getNombre().equals(laboreo[1]))
                     .findFirst()
@@ -394,7 +394,7 @@ public class GestorLaboreos {
                 .collect(Collectors.toList());
     }
 
-    public List<EmpleadoResponse> tomarFechaHoraInicioFin(List<com.dsi.laboreos.dto.FechaHoraPorLoteRequest.FechaHoraPorLaboreo> fechasPorLaboreo) {
+    public List<EmpleadoResponse> tomarFechaHoraInicioFin(List<FechaHoraPorLoteRequest.FechaHoraPorLaboreo> fechasPorLaboreo) {
         if (fechasPorLaboreo == null || fechasPorLaboreo.isEmpty()) {
             return new ArrayList<>();
         }
@@ -402,7 +402,7 @@ public class GestorLaboreos {
         // Validar que todas las combinaciones lote+laboreo seleccionadas tengan fechas
         Map<String, LocalDateTime[]> fechasMap = new HashMap<>();
         
-        for (com.dsi.laboreos.dto.FechaHoraPorLoteRequest.FechaHoraPorLaboreo fechaHora : fechasPorLaboreo) {
+        for (FechaHoraPorLoteRequest.FechaHoraPorLaboreo fechaHora : fechasPorLaboreo) {
             // Validar fechas
             if (!validarFechas(fechaHora.getFechaHoraInicio(), fechaHora.getFechaHoraFin())) {
                 return new ArrayList<>();
@@ -443,14 +443,14 @@ public class GestorLaboreos {
         return buscarEmpleados();
     }
 
-    public void tomarEmpleado(List<com.dsi.laboreos.dto.SeleccionarEmpleadoPorLaboreoRequest.EmpleadoPorLaboreo> empleadosPorLaboreo) {
+    public void tomarEmpleado(List<SeleccionarEmpleadoPorLaboreoRequest.EmpleadoPorLaboreo> empleadosPorLaboreo) {
         if (empleadosPorLaboreo == null || empleadosPorLaboreo.isEmpty()) {
             return;
         }
 
         Map<String, Empleado> empleadosMap = new HashMap<>();
         
-        for (com.dsi.laboreos.dto.SeleccionarEmpleadoPorLaboreoRequest.EmpleadoPorLaboreo empleadoPorLaboreo : empleadosPorLaboreo) {
+        for (SeleccionarEmpleadoPorLaboreoRequest.EmpleadoPorLaboreo empleadoPorLaboreo : empleadosPorLaboreo) {
             // Buscar el empleado
             Empleado empleado = empleados.stream()
                     .filter(e -> e.getNombre().equals(empleadoPorLaboreo.getNombreEmpleado()) && 

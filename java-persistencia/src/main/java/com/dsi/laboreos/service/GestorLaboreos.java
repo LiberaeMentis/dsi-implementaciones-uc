@@ -24,11 +24,11 @@ import com.dsi.laboreos.model.Cultivo;
 import com.dsi.laboreos.model.Empleado;
 import com.dsi.laboreos.model.Lote;
 import com.dsi.laboreos.model.OrdenDeLaboreo;
-import com.dsi.laboreos.model.ProyectoDeCultivo;
 import com.dsi.laboreos.model.TipoLaboreo;
 import com.dsi.laboreos.repository.ICampoRepository;
 import com.dsi.laboreos.repository.ICultivoRepository;
 import com.dsi.laboreos.repository.IEmpleadoRepository;
+import com.dsi.laboreos.repository.ILoteRepository;
 import com.dsi.laboreos.repository.ITipoLaboreoRepository;
 
 @Service
@@ -38,14 +38,17 @@ public class GestorLaboreos {
     private final IEmpleadoRepository empleadoRepository;
     private final ITipoLaboreoRepository tipoLaboreoRepository;
     private final ICultivoRepository cultivoRepository;
+    private final ILoteRepository loteRepository;
 
     private List<Campo> campos;
+    private List<Lote> lotes;
     private List<Empleado> empleados;
     private List<TipoLaboreo> tipoLaboreos;
     private List<Cultivo> cultivos;
 
     private Campo campoSeleccionado;
     private List<Lote> lotesSeleccionados;
+    private Cultivo cultivoDeLaboreo;
     private final Map<Integer, List<OrdenDeLaboreo>> ordenesLaboreoPorLote;
     // Mapa donde la clave es "numeroLote|tipoLaboreo|momentoLaboreo" y el valor es [fechaHoraInicio, fechaHoraFin]
     private Map<String, LocalDateTime[]> fechasPorLaboreo;
@@ -56,11 +59,13 @@ public class GestorLaboreos {
             ICampoRepository campoRepository,
             IEmpleadoRepository empleadoRepository,
             ITipoLaboreoRepository tipoLaboreoRepository,
-            ICultivoRepository cultivoRepository) {
+            ICultivoRepository cultivoRepository,
+            ILoteRepository loteRepository) {
         this.campoRepository = campoRepository;
         this.empleadoRepository = empleadoRepository;
         this.tipoLaboreoRepository = tipoLaboreoRepository;
         this.cultivoRepository = cultivoRepository;
+        this.loteRepository = loteRepository;
         this.ordenesLaboreoPorLote = new HashMap<>();
     }
     
@@ -71,6 +76,7 @@ public class GestorLaboreos {
 
     private void cargarDatos() {
         this.campos = campoRepository.findAll();
+        this.lotes = loteRepository.findAll();
         this.empleados = empleadoRepository.findAll();
         this.tipoLaboreos = tipoLaboreoRepository.findAll();
         this.cultivos = cultivoRepository.findAll();
@@ -115,10 +121,9 @@ public class GestorLaboreos {
             return new ArrayList<>();
         }
 
-        // Buscar en los lotes del campo (asumimos que ya son del campo seleccionado)
-        List<Lote> todosLosLotes = campoSeleccionado.buscarLotes();
-        this.lotesSeleccionados = todosLosLotes.stream()
-                .filter(lote -> numerosLote.contains(lote.getNumero()) && lote.tieneProyectoCultivoVigente())
+        // Buscar en los lotes del gestor (asumimos que ya son del campo seleccionado)
+        this.lotesSeleccionados = lotes.stream()
+                .filter(lote -> numerosLote.contains(lote.getNumero()))
                 .collect(Collectors.toList());
 
         return buscarInfoProyectoVigente(lotesSeleccionados);
@@ -131,6 +136,12 @@ public class GestorLaboreos {
                     if (cultivoNombre == null) {
                         return null;
                     }
+
+                    // Buscar el cultivo por nombre y guardarlo en el atributo
+                    this.cultivoDeLaboreo = cultivos.stream()
+                            .filter(c -> c.getNombre().equals(cultivoNombre))
+                            .findFirst()
+                            .orElse(null);
 
                     List<LaboreoResponse> laboreosRealizados = buscarLaboreosRealizados(lote);
                     List<TipoLaboreoResponse> tiposLaboreoDisponibles = buscarTiposLaboreoParaCultivo(lote);
@@ -178,18 +189,11 @@ public class GestorLaboreos {
             // Buscar en el mapa de lotes seleccionados (acceso O(1))
             Lote lote = lotesPorNumero.get(numeroLote);
             
-            if (lote == null) {
+            if (lote == null || cultivoDeLaboreo == null) {
                 return;
             }
             
-            ProyectoDeCultivo proyecto = lote.conocerProyectoDeCultivoVigente();
-            if (proyecto == null) {
-                return;
-            }
-            
-            Cultivo cultivo = proyecto.getCultivo();
-            
-            OrdenDeLaboreo orden = cultivo.conocerOrdenLaboreo().stream()
+            OrdenDeLaboreo orden = cultivoDeLaboreo.conocerOrdenLaboreo().stream()
                     .filter(o -> o.conocerTipoLaboreo().getNombre().equals(laboreo[0]) &&
                             o.conocerMomentoLaboreo().getNombre().equals(laboreo[1]))
                     .findFirst()

@@ -21,6 +21,7 @@ class GestorLaboreos:
         self.ordenes_laboreo: List[OrdenDeLaboreo] = []
         self.campo_seleccionado: Optional[Campo] = None
         self.lotes_seleccionados: List[Lote] = []
+        self.cultivo_de_laboreo: Optional[Cultivo] = None
         self.ordenes_laboreo_por_lote: Dict[int, List[OrdenDeLaboreo]] = {}
         # Mapa donde la clave es "numeroLote|tipoLaboreo|momentoLaboreo" y el valor es [fechaHoraInicio, fechaHoraFin]
         self.fechas_por_laboreo: Dict[str, List[datetime]] = {}
@@ -93,13 +94,10 @@ class GestorLaboreos:
         if not self.campo_seleccionado:
             return []
         
-        # Buscar los lotes del campo seleccionado
-        todos_los_lotes = self.campo_seleccionado.buscar_lotes_proy_cultivo()
-        
-        # Filtrar por los números seleccionados y guardar
+        # Buscar en los lotes del gestor (asumimos que ya son del campo seleccionado)
         self.lotes_seleccionados = [
-            lote for lote in todos_los_lotes
-            if lote.numero in numeros_lote
+            lote for lote in self.lotes
+            if lote.numero in numeros_lote and lote.conocer_proyecto_de_cultivo_vigente() is not None
         ]
         
         # Pasar la lista de lotes al campo
@@ -112,6 +110,12 @@ class GestorLaboreos:
             cultivo_nombre = self.campo_seleccionado.mostrar_cultivo(lote)
             if not cultivo_nombre:
                 continue
+            
+            # Buscar el cultivo por nombre y guardarlo en el atributo
+            self.cultivo_de_laboreo = next(
+                (c for c in self.cultivos if c.nombre == cultivo_nombre),
+                None
+            )
             
             laboreos_realizados = self.buscar_laboreos_realizados(lote)
             tipos_laboreo_disponibles = self.buscar_tipos_laboreo_para_cultivo(lote)
@@ -165,18 +169,12 @@ class GestorLaboreos:
             # Buscar en el diccionario de lotes seleccionados (acceso O(1))
             lote = lotes_por_numero.get(numero_lote)
             
-            if not lote:
+            if not lote or not self.cultivo_de_laboreo:
                 continue
-            
-            proyecto = lote.conocer_proyecto_de_cultivo_vigente()
-            if not proyecto:
-                continue
-            
-            cultivo = proyecto.cultivo
             
             orden = next(
                 (o for o in self.ordenes_laboreo 
-                 if o.cultivo_id == cultivo.id and
+                 if o.cultivo_id == self.cultivo_de_laboreo.id and
                     o.tipo_laboreo.nombre == laboreo_nombres[0] and
                     o.momento_laboreo.nombre == laboreo_nombres[1]),
                 None
