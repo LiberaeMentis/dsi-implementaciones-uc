@@ -44,11 +44,11 @@ public class GestorLaboreos {
 
     private Campo campoSeleccionado;
     private List<Lote> lotesSeleccionados;
-    private Cultivo cultivoDeLaboreo;
+
+    private final Map<Integer, Cultivo> cultivoPorNumeroLote;
+
     private final Map<Lote, List<OrdenDeLaboreo>> ordenesLaboreoPorLote;
-    // Mapa donde la clave es "numeroLote|tipoLaboreo|momentoLaboreo" y el valor es [fechaHoraInicio, fechaHoraFin]
     private Map<String, LocalDateTime[]> fechasPorLaboreo;
-    // Mapa donde la clave es "numeroLote|tipoLaboreo|momentoLaboreo" y el valor es el Empleado
     private Map<String, Empleado> empleadosPorLaboreo;
 
     public GestorLaboreos(
@@ -61,8 +61,9 @@ public class GestorLaboreos {
         this.cultivoRepository = cultivoRepository;
         this.loteRepository = loteRepository;
         this.ordenesLaboreoPorLote = new HashMap<>();
+        this.cultivoPorNumeroLote = new HashMap<>();
     }
-    
+
     @EventListener(ContextRefreshedEvent.class)
     public void onApplicationEvent(ContextRefreshedEvent event) {
         cargarDatos();
@@ -114,7 +115,6 @@ public class GestorLaboreos {
             return new ArrayList<>();
         }
 
-        // Buscar en los lotes del gestor (asumimos que ya son del campo seleccionado)
         this.lotesSeleccionados = lotes.stream()
                 .filter(lote -> numerosLote.contains(lote.getNumero()))
                 .collect(Collectors.toList());
@@ -123,6 +123,8 @@ public class GestorLaboreos {
     }
 
     public List<LoteInfoResponse> buscarInfoProyectoVigente(List<Lote> lotes) {
+        cultivoPorNumeroLote.clear();
+
         return lotes.stream()
                 .map(lote -> {
                     String cultivoNombre = campoSeleccionado.mostrarCultivo(lote);
@@ -130,11 +132,14 @@ public class GestorLaboreos {
                         return null;
                     }
 
-                    // Buscar el cultivo por nombre y guardarlo en el atributo
-                    this.cultivoDeLaboreo = cultivos.stream()
+                    Cultivo cultivo = cultivos.stream()
                             .filter(c -> c.getNombre().equals(cultivoNombre))
                             .findFirst()
                             .orElse(null);
+
+                    if (cultivo != null) {
+                        cultivoPorNumeroLote.put(lote.getNumero(), cultivo);
+                    }
 
                     List<LaboreoResponse> laboreosRealizados = buscarLaboreosRealizados(lote);
                     List<TipoLaboreoResponse> tiposLaboreoDisponibles = buscarTiposLaboreoParaCultivo(lote);
@@ -166,32 +171,31 @@ public class GestorLaboreos {
 
     public void tomarSeleccLaboreo(List<com.dsi.laboreos.dto.LaboreoPorLoteRequest> laboreosPorLote) {
         ordenesLaboreoPorLote.clear();
-        
+
         if (campoSeleccionado == null || lotesSeleccionados == null || lotesSeleccionados.isEmpty()) {
             return;
         }
-        
-        // Crear un mapa de lotes por número para acceso O(1) en lugar de O(n) por cada búsqueda
+
         Map<Integer, Lote> lotesPorNumero = lotesSeleccionados.stream()
                 .collect(Collectors.toMap(Lote::getNumero, lote -> lote));
-        
+
         laboreosPorLote.forEach(laboreoPorLote -> {
             Integer numeroLote = laboreoPorLote.getNumeroLote();
             String[] laboreo = laboreoPorLote.getLaboreo();
-            
-            // Buscar en el mapa de lotes seleccionados (acceso O(1))
+
             Lote lote = lotesPorNumero.get(numeroLote);
-            
-            if (lote == null || cultivoDeLaboreo == null) {
+            Cultivo cultivo = cultivoPorNumeroLote.get(numeroLote);
+
+            if (lote == null || cultivo == null) {
                 return;
             }
-            
-            OrdenDeLaboreo orden = cultivoDeLaboreo.conocerOrdenLaboreo().stream()
+
+            OrdenDeLaboreo orden = cultivo.conocerOrdenLaboreo().stream()
                     .filter(o -> o.conocerTipoLaboreo().getNombre().equals(laboreo[0]) &&
                             o.conocerMomentoLaboreo().getNombre().equals(laboreo[1]))
                     .findFirst()
                     .orElse(null);
-            
+
             if (orden != null) {
                 ordenesLaboreoPorLote.computeIfAbsent(lote, k -> new ArrayList<>()).add(orden);
             }
@@ -208,7 +212,7 @@ public class GestorLaboreos {
         }
 
         Map<String, LocalDateTime[]> fechasMap = new HashMap<>();
-        
+
         for (FechaHoraPorLoteRequest.FechaHoraPorLaboreo fechaHora : fechasPorLaboreo) {
             // Crear clave compuesta: numeroLote|tipoLaboreo|momentoLaboreo
             String clave = generarClaveLaboreo(fechaHora.getNumeroLote(), fechaHora.getLaboreo());
@@ -227,17 +231,15 @@ public class GestorLaboreos {
         }
 
         Map<String, Empleado> empleadosMap = new HashMap<>();
-        
+
         for (com.dsi.laboreos.dto.SeleccionarEmpleadoPorLaboreoRequest.EmpleadoPorLaboreo empleadoPorLaboreo : empleadosPorLaboreo) {
-            // Buscar el empleado
             Empleado empleado = empleados.stream()
-                    .filter(e -> e.getNombre().equals(empleadoPorLaboreo.getNombreEmpleado()) && 
+                    .filter(e -> e.getNombre().equals(empleadoPorLaboreo.getNombreEmpleado()) &&
                             e.getApellido().equals(empleadoPorLaboreo.getApellidoEmpleado()))
                     .findFirst()
                     .orElse(null);
-            
+
             if (empleado != null) {
-                // Crear clave compuesta: numeroLote|tipoLaboreo|momentoLaboreo
                 String clave = generarClaveLaboreo(empleadoPorLaboreo.getNumeroLote(), empleadoPorLaboreo.getLaboreo());
                 empleadosMap.put(clave, empleado);
             }
@@ -264,42 +266,45 @@ public class GestorLaboreos {
         if (ordenesLaboreoPorLote == null || ordenesLaboreoPorLote.isEmpty()) {
             return false;
         }
-        
+
         return ordenesLaboreoPorLote.values().stream()
                 .flatMap(List::stream)
                 .allMatch(orden -> !orden.esSiembra() && !orden.esCosecha());
     }
 
     private void crearLaboreos() {
-        if (campoSeleccionado == null || empleadosPorLaboreo == null || empleadosPorLaboreo.isEmpty() || ordenesLaboreoPorLote == null || ordenesLaboreoPorLote.isEmpty() || fechasPorLaboreo == null || fechasPorLaboreo.isEmpty()) {
+        if (campoSeleccionado == null
+                || empleadosPorLaboreo == null || empleadosPorLaboreo.isEmpty()
+                || ordenesLaboreoPorLote == null || ordenesLaboreoPorLote.isEmpty()
+                || fechasPorLaboreo == null || fechasPorLaboreo.isEmpty()) {
             return;
         }
-        
+
         // Pre-procesar: asociar cada orden con sus fechas y empleado
         // Convertir a arrays de Object: [fechaInicio, fechaFin, empleado, orden]
         Map<Lote, List<Object[]>> laboreosPorLote = new HashMap<>();
-        
+
         ordenesLaboreoPorLote.forEach((lote, ordenesLaboreo) -> {
             Integer numeroLote = lote.getNumero();
             List<Object[]> laboreos = new ArrayList<>();
-            
+
             for (OrdenDeLaboreo orden : ordenesLaboreo) {
-                String clave = generarClaveLaboreo(numeroLote, 
-                    new String[]{orden.conocerTipoLaboreo().getNombre(), orden.conocerMomentoLaboreo().getNombre()});
+                String clave = generarClaveLaboreo(numeroLote,
+                        new String[]{orden.conocerTipoLaboreo().getNombre(), orden.conocerMomentoLaboreo().getNombre()});
                 LocalDateTime[] fechas = fechasPorLaboreo.get(clave);
                 Empleado empleado = empleadosPorLaboreo.get(clave);
-                
+
                 if (fechas != null && fechas.length == 2 && empleado != null) {
                     // Array: [fechaInicio, fechaFin, empleado, orden]
                     laboreos.add(new Object[]{fechas[0], fechas[1], empleado, orden});
                 }
             }
-            
+
             if (!laboreos.isEmpty()) {
                 laboreosPorLote.put(lote, laboreos);
             }
         });
-        
+
         campoSeleccionado.crearLaboreosParaProyecto(laboreosPorLote);
         campoRepository.save(campoSeleccionado);
     }
@@ -311,4 +316,3 @@ public class GestorLaboreos {
     private void finCU() {
     }
 }
-

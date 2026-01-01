@@ -45,10 +45,14 @@ public class GestorLaboreos {
     private List<TipoSuelo> tiposSuelo;
     private List<MomentoLaboreo> momentosLaboreo;
     private List<OrdenDeLaboreo> ordenesLaboreo;
+
     private Campo campoSeleccionado;
     private List<Lote> lotesSeleccionados;
-    private Cultivo cultivoDeLaboreo;
+
+    private Map<Integer, Cultivo> cultivoPorNumeroLote;
+
     private Map<Lote, List<OrdenDeLaboreo>> ordenesLaboreoPorLote;
+
     // Mapa donde la clave es "numeroLote|tipoLaboreo|momentoLaboreo" y el valor es [fechaHoraInicio, fechaHoraFin]
     private Map<String, LocalDateTime[]> fechasPorLaboreo;
     // Mapa donde la clave es "numeroLote|tipoLaboreo|momentoLaboreo" y el valor es el Empleado
@@ -65,6 +69,7 @@ public class GestorLaboreos {
         this.momentosLaboreo = new ArrayList<>();
         this.ordenesLaboreo = new ArrayList<>();
         this.ordenesLaboreoPorLote = new HashMap<>();
+        this.cultivoPorNumeroLote = new HashMap<>();
     }
 
     @PostConstruct
@@ -104,7 +109,6 @@ public class GestorLaboreos {
     }
 
     private void crearTipoLaboreos() {
-        // Tipos de laboreo según el dominio (Ej: Soja -> Arar, Rastrillar, Sembrar, Escardillar, Cosechar)
         tipoLaboreos.add(new TipoLaboreo("Arado", "Roturar la tierra"));
         tipoLaboreos.add(new TipoLaboreo("Rastrillado", "Nivelar y desmenuzar la tierra"));
         tipoLaboreos.add(new TipoLaboreo("Siembra", "Plantación del cultivo"));
@@ -116,7 +120,6 @@ public class GestorLaboreos {
     }
 
     private void crearCultivos() {
-        // Según el dominio: Suelo Tipo 1 apto para Soja, Maní, Girasol
         TipoSuelo sueloTipo1 = tiposSuelo.get(0); // Arcilloso
         TipoSuelo sueloTipo2 = tiposSuelo.get(1); // Arenoso
 
@@ -138,23 +141,20 @@ public class GestorLaboreos {
     }
 
     private void crearOrdenesLaboreo() {
-        // Tipos de laboreo
-        TipoLaboreo arado = tipoLaboreos.get(0);        // Arado
-        TipoLaboreo rastrillado = tipoLaboreos.get(1);  // Rastrillado
-        TipoLaboreo siembra = tipoLaboreos.get(2);      // Siembra
-        TipoLaboreo escardillado = tipoLaboreos.get(3); // Escardillado
-        TipoLaboreo cosecha = tipoLaboreos.get(4);      // Cosecha
-        TipoLaboreo fumigacion = tipoLaboreos.get(5);   // Fumigación
-        TipoLaboreo riego = tipoLaboreos.get(6);        // Riego
-        
-        // Momentos de laboreo
-        MomentoLaboreo preSiembra = momentosLaboreo.get(0);      // Pre-siembra
-        MomentoLaboreo momentoSiembra = momentosLaboreo.get(1);  // Siembra
-        MomentoLaboreo postSiembra = momentosLaboreo.get(2);     // Post-siembra
-        MomentoLaboreo crecimiento = momentosLaboreo.get(3);     // Crecimiento
-        MomentoLaboreo momentoCosecha = momentosLaboreo.get(4);  // Cosecha
+        TipoLaboreo arado = tipoLaboreos.get(0);
+        TipoLaboreo rastrillado = tipoLaboreos.get(1);
+        TipoLaboreo siembra = tipoLaboreos.get(2);
+        TipoLaboreo escardillado = tipoLaboreos.get(3);
+        TipoLaboreo cosecha = tipoLaboreos.get(4);
+        TipoLaboreo fumigacion = tipoLaboreos.get(5);
+        TipoLaboreo riego = tipoLaboreos.get(6);
 
-        // Órdenes para Soja (según dominio: Arar, Rastrillar, Sembrar, Escardillar, Cosechar)
+        MomentoLaboreo preSiembra = momentosLaboreo.get(0);
+        MomentoLaboreo momentoSiembra = momentosLaboreo.get(1);
+        MomentoLaboreo postSiembra = momentosLaboreo.get(2);
+        MomentoLaboreo crecimiento = momentosLaboreo.get(3);
+        MomentoLaboreo momentoCosecha = momentosLaboreo.get(4);
+
         OrdenDeLaboreo orden1 = new OrdenDeLaboreo(1, arado, preSiembra);
         ordenesLaboreo.add(orden1);
 
@@ -170,24 +170,30 @@ public class GestorLaboreos {
         OrdenDeLaboreo orden5 = new OrdenDeLaboreo(5, cosecha, momentoCosecha);
         ordenesLaboreo.add(orden5);
 
-        // Órdenes adicionales para otros cultivos
         OrdenDeLaboreo orden6 = new OrdenDeLaboreo(6, fumigacion, postSiembra);
         ordenesLaboreo.add(orden6);
 
         OrdenDeLaboreo orden7 = new OrdenDeLaboreo(7, riego, crecimiento);
         ordenesLaboreo.add(orden7);
 
-        // Asignar órdenes a Soja
-        Cultivo soja = cultivos.get(0);
-        soja.conocerOrdenLaboreo().addAll(Arrays.asList(orden1, orden2, orden3, orden4, orden5));
+        Cultivo sojaCultivo = cultivos.get(0);
+        sojaCultivo.conocerOrdenLaboreo().addAll(Arrays.asList(orden1, orden2, orden3, orden4, orden5));
 
-        // Asignar algunas órdenes a Maní
-        Cultivo mani = cultivos.get(1);
-        mani.conocerOrdenLaboreo().addAll(Arrays.asList(orden1, orden2, orden3, orden6, orden5));
+        Cultivo maniCultivo = cultivos.get(1);
+        maniCultivo.conocerOrdenLaboreo().addAll(Arrays.asList(orden1, orden2, orden3, orden6, orden5));
 
-        // Asignar algunas órdenes a Girasol
-        Cultivo girasol = cultivos.get(2);
-        girasol.conocerOrdenLaboreo().addAll(Arrays.asList(orden1, orden2, orden3, orden7, orden5));
+        Cultivo girasolCultivo = cultivos.get(2);
+        girasolCultivo.conocerOrdenLaboreo().addAll(Arrays.asList(orden1, orden2, orden3, orden7, orden5));
+
+        Cultivo maizCultivo = cultivos.get(3);
+        maizCultivo.conocerOrdenLaboreo().addAll(Arrays.asList(
+                orden1, // Arado - Pre-siembra
+                orden2, // Rastrillado - Pre-siembra
+                orden3, // Siembra - Siembra
+                orden6, // Fumigación - Post-siembra
+                orden7, // Riego - Crecimiento
+                orden5  // Cosecha - Cosecha
+        ));
     }
 
     private void crearEmpleados() {
@@ -197,35 +203,31 @@ public class GestorLaboreos {
     }
 
     private void crearLotes() {
-        TipoSuelo sueloTipo1 = tiposSuelo.get(0); // Arcilloso
-        TipoSuelo sueloTipo2 = tiposSuelo.get(1); // Arenoso
-        
+        TipoSuelo sueloTipo1 = tiposSuelo.get(0);
+        TipoSuelo sueloTipo2 = tiposSuelo.get(1);
+
         Estado estadoVigente = estados.get(1);
-        
+
         Cultivo soja = cultivos.get(0);
         Cultivo mani = cultivos.get(1);
         Cultivo girasol = cultivos.get(2);
         Cultivo maiz = cultivos.get(3);
 
-        // Lote 1: Soja en suelo tipo 1 (Arcilloso)
         Lote lote1 = new Lote(1, 10.5, sueloTipo1);
         ProyectoDeCultivo proyecto1 = new ProyectoDeCultivo(soja, estadoVigente, LocalDate.now().minusMonths(2), null, "");
         lote1.agregarProyectoCultivo(proyecto1);
         lotes.add(lote1);
 
-        // Lote 2: Maíz en suelo tipo 2 (Arenoso)
         Lote lote2 = new Lote(2, 15.0, sueloTipo2);
         ProyectoDeCultivo proyecto2 = new ProyectoDeCultivo(maiz, estadoVigente, LocalDate.now().minusMonths(1), null, "");
         lote2.agregarProyectoCultivo(proyecto2);
         lotes.add(lote2);
 
-        // Lote 3: Maní en suelo tipo 1 (Arcilloso)
         Lote lote3 = new Lote(3, 8.0, sueloTipo1);
         ProyectoDeCultivo proyecto3 = new ProyectoDeCultivo(mani, estadoVigente, LocalDate.now().minusDays(15), null, "");
         lote3.agregarProyectoCultivo(proyecto3);
         lotes.add(lote3);
 
-        // Lote 4: Girasol en suelo tipo 1 (Arcilloso)
         Lote lote4 = new Lote(4, 12.0, sueloTipo1);
         ProyectoDeCultivo proyecto4 = new ProyectoDeCultivo(girasol, estadoVigente, LocalDate.now().minusMonths(3), null, "");
         lote4.agregarProyectoCultivo(proyecto4);
@@ -233,15 +235,12 @@ public class GestorLaboreos {
     }
 
     private void crearCampos() {
-        // Campo Norte: lotes 1 y 2 (Soja y Maíz)
         List<Lote> lotesCampo1 = Arrays.asList(lotes.get(0), lotes.get(1));
         campos.add(new Campo("Campo Norte", 25.5, true, lotesCampo1));
 
-        // Campo Sur: lotes 3 y 4 (Maní y Girasol)
         List<Lote> lotesCampo2 = Arrays.asList(lotes.get(2), lotes.get(3));
         campos.add(new Campo("Campo Sur", 20.0, true, lotesCampo2));
 
-        // Campo Este: sin lotes (deshabilitado)
         campos.add(new Campo("Campo Este", 15.0, false, new ArrayList<>()));
     }
 
@@ -301,7 +300,7 @@ public class GestorLaboreos {
         if (campoSeleccionado == null) {
             return new ArrayList<>();
         }
-        // Buscar en los lotes del gestor (asumimos que ya son del campo seleccionado)
+
         this.lotesSeleccionados = lotes.stream()
                 .filter(lote -> numerosLote.contains(lote.getNumero()))
                 .collect(Collectors.toList());
@@ -310,6 +309,8 @@ public class GestorLaboreos {
     }
 
     public List<LoteInfoResponse> buscarInfoProyectoVigente(List<Lote> lotes) {
+        cultivoPorNumeroLote.clear();
+
         return lotes.stream()
                 .map(lote -> {
                     String cultivoNombre = campoSeleccionado.mostrarCultivo(lote);
@@ -317,11 +318,14 @@ public class GestorLaboreos {
                         return null;
                     }
 
-                    // Buscar el cultivo por nombre y guardarlo en el atributo
-                    this.cultivoDeLaboreo = cultivos.stream()
+                    Cultivo cultivo = cultivos.stream()
                             .filter(c -> c.getNombre().equals(cultivoNombre))
                             .findFirst()
                             .orElse(null);
+
+                    if (cultivo != null) {
+                        cultivoPorNumeroLote.put(lote.getNumero(), cultivo);
+                    }
 
                     List<LaboreoResponse> laboreosRealizados = buscarLaboreosRealizados(lote);
                     List<TipoLaboreoResponse> tiposLaboreoDisponibles = buscarTiposLaboreoParaCultivo(lote);
@@ -353,30 +357,31 @@ public class GestorLaboreos {
 
     public void tomarSeleccLaboreo(List<LaboreoPorLoteRequest> laboreosPorLote) {
         ordenesLaboreoPorLote.clear();
-        
+
         if (campoSeleccionado == null || lotesSeleccionados == null || lotesSeleccionados.isEmpty()) {
             return;
         }
-        
+
         Map<Integer, Lote> lotesPorNumero = lotesSeleccionados.stream()
                 .collect(Collectors.toMap(Lote::getNumero, lote -> lote));
-        
+
         laboreosPorLote.forEach(laboreoPorLote -> {
             Integer numeroLote = laboreoPorLote.getNumeroLote();
             String[] laboreo = laboreoPorLote.getLaboreo();
-            
+
             Lote lote = lotesPorNumero.get(numeroLote);
-            
-            if (lote == null || cultivoDeLaboreo == null) {
+            Cultivo cultivo = cultivoPorNumeroLote.get(numeroLote);
+
+            if (lote == null || cultivo == null) {
                 return;
             }
-            
-            OrdenDeLaboreo orden = cultivoDeLaboreo.conocerOrdenLaboreo().stream()
+
+            OrdenDeLaboreo orden = cultivo.conocerOrdenLaboreo().stream()
                     .filter(o -> o.conocerTipoLaboreo().getNombre().equals(laboreo[0]) &&
                             o.conocerMomentoLaboreo().getNombre().equals(laboreo[1]))
                     .findFirst()
                     .orElse(null);
-            
+
             if (orden != null) {
                 ordenesLaboreoPorLote.computeIfAbsent(lote, k -> new ArrayList<>()).add(orden);
             }
@@ -393,11 +398,9 @@ public class GestorLaboreos {
         }
 
         Map<String, LocalDateTime[]> fechasMap = new HashMap<>();
-        
+
         for (FechaHoraPorLoteRequest.FechaHoraPorLaboreo fechaHora : fechasPorLaboreo) {
-            // Crear clave compuesta: numeroLote|tipoLaboreo|momentoLaboreo
             String clave = generarClaveLaboreo(fechaHora.getNumeroLote(), fechaHora.getLaboreo());
-            // Convertir a estructura simple: array con [fechaHoraInicio, fechaHoraFin]
             fechasMap.put(clave, new LocalDateTime[]{fechaHora.getFechaHoraInicio(), fechaHora.getFechaHoraFin()});
         }
 
@@ -412,17 +415,15 @@ public class GestorLaboreos {
         }
 
         Map<String, Empleado> empleadosMap = new HashMap<>();
-        
+
         for (SeleccionarEmpleadoPorLaboreoRequest.EmpleadoPorLaboreo empleadoPorLaboreo : empleadosPorLaboreo) {
-            // Buscar el empleado
             Empleado empleado = empleados.stream()
-                    .filter(e -> e.getNombre().equals(empleadoPorLaboreo.getNombreEmpleado()) && 
+                    .filter(e -> e.getNombre().equals(empleadoPorLaboreo.getNombreEmpleado()) &&
                             e.getApellido().equals(empleadoPorLaboreo.getApellidoEmpleado()))
                     .findFirst()
                     .orElse(null);
-            
+
             if (empleado != null) {
-                // Crear clave compuesta: numeroLote|tipoLaboreo|momentoLaboreo
                 String clave = generarClaveLaboreo(empleadoPorLaboreo.getNumeroLote(), empleadoPorLaboreo.getLaboreo());
                 empleadosMap.put(clave, empleado);
             }
@@ -440,12 +441,11 @@ public class GestorLaboreos {
                 .collect(Collectors.toList());
     }
 
-    // Nota: se agregan los métodos esSiembra() y esCosecha() para validar que el tipo de laboreo no sea Siembra ni Cosecha.
     private Boolean validarTipoLaboreo() {
         if (ordenesLaboreoPorLote == null || ordenesLaboreoPorLote.isEmpty()) {
             return false;
         }
-        
+
         return ordenesLaboreoPorLote.values().stream()
                 .flatMap(List::stream)
                 .allMatch(orden -> !orden.esSiembra() && !orden.esCosecha());
@@ -470,35 +470,35 @@ public class GestorLaboreos {
         // Mapa final: Lote -> Lista de arrays con información de laboreos a crear
         // Cada array contiene: [fechaInicio, fechaFin, empleado, orden]
         Map<Lote, List<Object[]>> laboreosPorLote = new HashMap<>();
-        
+
         // Procesar cada lote con sus órdenes de laboreo seleccionadas
         ordenesLaboreoPorLote.forEach((lote, ordenesLaboreo) -> {
             Integer numeroLote = lote.getNumero();
             List<Object[]> laboreos = new ArrayList<>();
-            
+
             // Para cada orden del lote, buscar sus fechas y empleado asociados
             for (OrdenDeLaboreo orden : ordenesLaboreo) {
                 // Generar clave compuesta: "numeroLote|tipoLaboreo|momentoLaboreo"
-                String clave = generarClaveLaboreo(numeroLote, 
-                    new String[]{orden.conocerTipoLaboreo().getNombre(), orden.conocerMomentoLaboreo().getNombre()});
-                
+                String clave = generarClaveLaboreo(numeroLote,
+                        new String[]{orden.conocerTipoLaboreo().getNombre(), orden.conocerMomentoLaboreo().getNombre()});
+
                 // Buscar las fechas y empleado asociados a esta orden
                 LocalDateTime[] fechas = fechasPorLaboreo.get(clave);
                 Empleado empleado = empleadosPorLaboreo.get(clave);
-                
+
                 // Si la orden tiene fechas y empleado válidos, crear array con la información
                 // Array: [fechaInicio, fechaFin, empleado, orden]
                 if (fechas != null && fechas.length == 2 && empleado != null) {
                     laboreos.add(new Object[]{fechas[0], fechas[1], empleado, orden});
                 }
             }
-            
+
             // Solo agregar el lote si tiene laboreos válidos para crear
             if (!laboreos.isEmpty()) {
                 laboreosPorLote.put(lote, laboreos);
             }
         });
-        
+
         // Le mandamos al Campo la información para que cree los laboreos
         campoSeleccionado.crearLaboreosParaProyecto(laboreosPorLote);
     }
