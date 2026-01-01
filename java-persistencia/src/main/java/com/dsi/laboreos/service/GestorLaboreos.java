@@ -24,26 +24,22 @@ import com.dsi.laboreos.model.Cultivo;
 import com.dsi.laboreos.model.Empleado;
 import com.dsi.laboreos.model.Lote;
 import com.dsi.laboreos.model.OrdenDeLaboreo;
-import com.dsi.laboreos.model.TipoLaboreo;
 import com.dsi.laboreos.repository.ICampoRepository;
 import com.dsi.laboreos.repository.ICultivoRepository;
 import com.dsi.laboreos.repository.IEmpleadoRepository;
 import com.dsi.laboreos.repository.ILoteRepository;
-import com.dsi.laboreos.repository.ITipoLaboreoRepository;
 
 @Service
 public class GestorLaboreos {
 
     private final ICampoRepository campoRepository;
     private final IEmpleadoRepository empleadoRepository;
-    private final ITipoLaboreoRepository tipoLaboreoRepository;
     private final ICultivoRepository cultivoRepository;
     private final ILoteRepository loteRepository;
 
     private List<Campo> campos;
     private List<Lote> lotes;
     private List<Empleado> empleados;
-    private List<TipoLaboreo> tipoLaboreos;
     private List<Cultivo> cultivos;
 
     private Campo campoSeleccionado;
@@ -58,12 +54,10 @@ public class GestorLaboreos {
     public GestorLaboreos(
             ICampoRepository campoRepository,
             IEmpleadoRepository empleadoRepository,
-            ITipoLaboreoRepository tipoLaboreoRepository,
             ICultivoRepository cultivoRepository,
             ILoteRepository loteRepository) {
         this.campoRepository = campoRepository;
         this.empleadoRepository = empleadoRepository;
-        this.tipoLaboreoRepository = tipoLaboreoRepository;
         this.cultivoRepository = cultivoRepository;
         this.loteRepository = loteRepository;
         this.ordenesLaboreoPorLote = new HashMap<>();
@@ -78,7 +72,6 @@ public class GestorLaboreos {
         this.campos = campoRepository.findAll();
         this.lotes = loteRepository.findAll();
         this.empleados = empleadoRepository.findAll();
-        this.tipoLaboreos = tipoLaboreoRepository.findAll();
         this.cultivos = cultivoRepository.findAll();
     }
 
@@ -165,7 +158,7 @@ public class GestorLaboreos {
     }
 
     private List<TipoLaboreoResponse> buscarTiposLaboreoParaCultivo(Lote lote) {
-        List<String[]> tiposLaboreoInfo = campoSeleccionado.buscarTiposLaboreoParaCultivo(lote);
+        List<String[]> tiposLaboreoInfo = campoSeleccionado.buscarTipoLaboreosParaCultivo(lote);
         return tiposLaboreoInfo.stream()
                 .map(info -> new TipoLaboreoResponse(info[0], info[1]))
                 .collect(Collectors.toList());
@@ -210,24 +203,8 @@ public class GestorLaboreos {
             return new ArrayList<>();
         }
 
-        List<String[]> tiposLaboreoInfo = campoSeleccionado.buscarTiposLaboreoParaCultivo(lote);
+        List<String[]> tiposLaboreoInfo = campoSeleccionado.buscarTipoLaboreosParaCultivo(lote);
         return tiposLaboreoInfo.stream()
-                .map(info -> new TipoLaboreoResponse(info[0], info[1]))
-                .collect(Collectors.toList());
-    }
-
-    // Método legacy - mantener por compatibilidad si se usa en algún lugar
-    public List<TipoLaboreoResponse> buscarTiposLaboreosParaCultivoLegacy(String nombreCultivo) {
-        Cultivo cultivo = cultivos.stream()
-                .filter(c -> c.getNombre().equals(nombreCultivo))
-                .findFirst()
-                .orElse(null);
-
-        if (cultivo == null) {
-            return new ArrayList<>();
-        }
-
-        return cultivo.buscarTiposLaboreo().stream()
                 .map(info -> new TipoLaboreoResponse(info[0], info[1]))
                 .collect(Collectors.toList());
     }
@@ -287,25 +264,6 @@ public class GestorLaboreos {
                     return new EmpleadoResponse(datosEmpleado.get(0), datosEmpleado.get(1));
                 })
                 .collect(Collectors.toList());
-    }
-
-    public Boolean validarFechas(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
-        LocalDateTime ahora = LocalDateTime.now();
-        return fechaInicio.isBefore(fechaFin) &&
-                fechaInicio.isBefore(ahora) &&
-                fechaFin.isBefore(ahora);
-    }
-
-    public Boolean validarTipoLaboreo(String nombreTipoLaboreo) {
-        TipoLaboreo tipo = tipoLaboreos.stream()
-                .filter(t -> t.getNombre().equals(nombreTipoLaboreo))
-                .findFirst()
-                .orElse(null);
-
-        if (tipo == null) {
-            return false;
-        }
-        return !tipo.getNombre().equals("Siembra") && !tipo.getNombre().equals("Cosecha");
     }
 
     public Boolean tomarConfirmacion() {

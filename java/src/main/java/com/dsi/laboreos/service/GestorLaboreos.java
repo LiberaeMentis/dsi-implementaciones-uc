@@ -345,7 +345,7 @@ public class GestorLaboreos {
     }
 
     private List<TipoLaboreoResponse> buscarTiposLaboreoParaCultivo(Lote lote) {
-        List<String[]> tiposLaboreoInfo = campoSeleccionado.buscarTiposLaboreoParaCultivo(lote);
+        List<String[]> tiposLaboreoInfo = campoSeleccionado.buscarTipoLaboreosParaCultivo(lote);
         return tiposLaboreoInfo.stream()
                 .map(info -> new TipoLaboreoResponse(info[0], info[1]))
                 .collect(Collectors.toList());
@@ -451,24 +451,6 @@ public class GestorLaboreos {
                 .collect(Collectors.toList());
     }
 
-    public Boolean validarFechas(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
-        LocalDateTime ahora = LocalDateTime.now();
-        return fechaInicio.isBefore(fechaFin) &&
-                fechaInicio.isBefore(ahora) &&
-                fechaFin.isBefore(ahora);
-    }
-
-    public Boolean validarTipoLaboreo(String nombreTipoLaboreo) {
-        TipoLaboreo tipo = tipoLaboreos.stream()
-                .filter(t -> t.getNombre().equals(nombreTipoLaboreo))
-                .findFirst()
-                .orElse(null);
-
-        if (tipo == null) {
-            return false;
-        }
-        return !tipo.getNombre().equals("Siembra") && !tipo.getNombre().equals("Cosecha");
-    }
     // Nota: se agregan los métodos esSiembra() y esCosecha() para validar que el tipo de laboreo no sea Siembra ni Cosecha.
     private Boolean validarTipoLaboreo() {
         if (ordenesLaboreoPorLote == null || ordenesLaboreoPorLote.isEmpty()) {

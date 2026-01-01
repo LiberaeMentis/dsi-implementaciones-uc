@@ -91,9 +91,6 @@ public class Campo {
                 .collect(Collectors.toList());
     }
 
-    public void mostrarLotes() {
-    }
-
     public String mostrarCultivo(Lote lote) {
         return lote != null ? lote.mostrarCultivo() : null;
     }
@@ -111,7 +108,7 @@ public class Campo {
         return lote != null ? lote.buscarLaboreosRealizados() : new ArrayList<>();
     }
 
-    public List<String[]> buscarTiposLaboreoParaCultivo(Lote lote) {
+    public List<String[]> buscarTipoLaboreosParaCultivo(Lote lote) {
         return lote != null ? lote.buscarLaboreosParaCultivo() : new ArrayList<>();
     }
 

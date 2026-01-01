@@ -143,7 +143,7 @@ class GestorLaboreos:
         return resultado
     
     def buscar_tipos_laboreo_para_cultivo(self, lote: Lote) -> List[TipoLaboreoResponse]:
-        tipos_info = self.campo_seleccionado.buscar_tipos_laboreo_para_cultivo(lote)
+        tipos_info = self.campo_seleccionado.buscar_tipo_laboreos_para_cultivo(lote)
         
         return [
             TipoLaboreoResponse(
@@ -243,12 +243,6 @@ class GestorLaboreos:
                 empleados_map[clave] = empleado
         
         self.empleados_por_laboreo = empleados_map
-    
-    def validar_fechas(self, fecha_inicio: datetime, fecha_fin: datetime) -> bool:
-        ahora = datetime.now()
-        return (fecha_inicio < fecha_fin and 
-                fecha_inicio < ahora and 
-                fecha_fin < ahora)
     
     def tomar_confirmacion(self) -> bool:
         self.crear_laboreos()

@@ -61,7 +61,7 @@ class Campo(models.Model):
         proyecto = lote_obj.conocer_proyecto_de_cultivo_vigente()
         return proyecto.buscar_laboreos_realizados() if proyecto else []
     
-    def buscar_tipos_laboreo_para_cultivo(self, lote):
+    def buscar_tipo_laboreos_para_cultivo(self, lote):
         if not lote:
             return []
         return lote.buscar_laboreos_para_cultivo()
