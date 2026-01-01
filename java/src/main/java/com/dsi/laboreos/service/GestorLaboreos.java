@@ -383,17 +383,6 @@ public class GestorLaboreos {
         });
     }
 
-    public List<TipoLaboreoResponse> buscarTiposLaboreosParaCultivo(Lote lote) {
-        if (campoSeleccionado == null || lote == null) {
-            return new ArrayList<>();
-        }
-
-        List<String[]> tiposLaboreoInfo = campoSeleccionado.buscarTiposLaboreoParaCultivo(lote);
-        return tiposLaboreoInfo.stream()
-                .map(info -> new TipoLaboreoResponse(info[0], info[1]))
-                .collect(Collectors.toList());
-    }
-
     private String generarClaveLaboreo(Integer numeroLote, String[] laboreo) {
         return numeroLote + "|" + laboreo[0] + "|" + laboreo[1];
     }
