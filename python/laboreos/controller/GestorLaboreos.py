@@ -22,7 +22,7 @@ class GestorLaboreos:
         self.campo_seleccionado: Optional[Campo] = None
         self.lotes_seleccionados: List[Lote] = []
         self.cultivo_de_laboreo: Optional[Cultivo] = None
-        self.ordenes_laboreo_por_lote: Dict[int, List[OrdenDeLaboreo]] = {}
+        self.ordenes_laboreo_por_lote: Dict[Lote, List[OrdenDeLaboreo]] = {}
         # Mapa donde la clave es "numeroLote|tipoLaboreo|momentoLaboreo" y el valor es [fechaHoraInicio, fechaHoraFin]
         self.fechas_por_laboreo: Dict[str, List[datetime]] = {}
         # Mapa donde la clave es "numeroLote|tipoLaboreo|momentoLaboreo" y el valor es el Empleado
@@ -181,49 +181,32 @@ class GestorLaboreos:
             )
             
             if orden:
-                if numero_lote not in self.ordenes_laboreo_por_lote:
-                    self.ordenes_laboreo_por_lote[numero_lote] = []
+                if lote not in self.ordenes_laboreo_por_lote:
+                    self.ordenes_laboreo_por_lote[lote] = []
                 
-                self.ordenes_laboreo_por_lote[numero_lote].append(orden)
+                self.ordenes_laboreo_por_lote[lote].append(orden)
     
-    def tomar_fecha_hora_inicio_fin(self, fechas_por_laboreo: List[dict]) -> List[EmpleadoResponse]:
+    def _generar_clave_laboreo(self, numero_lote: int, laboreo: List[str]) -> str:
+        return f"{numero_lote}|{laboreo[0]}|{laboreo[1]}"
+    
+    def tomar_duracion_laboreo(self, fechas_por_laboreo: List[dict]) -> List[EmpleadoResponse]:
         if not fechas_por_laboreo:
             return []
         
-        # Validar que todas las combinaciones lote+laboreo seleccionadas tengan fechas
         fechas_map = {}
         
         for fecha_hora in fechas_por_laboreo:
             fecha_hora_inicio = fecha_hora['fechaHoraInicio']
             fecha_hora_fin = fecha_hora['fechaHoraFin']
             
-            # Validar fechas
-            if not self.validar_fechas(fecha_hora_inicio, fecha_hora_fin):
-                return []
-            
             # Crear clave compuesta: numeroLote|tipoLaboreo|momentoLaboreo
             clave = self._generar_clave_laboreo(fecha_hora['numeroLote'], fecha_hora['laboreo'])
             # Convertir a estructura simple: lista con [fechaHoraInicio, fechaHoraFin]
             fechas_map[clave] = [fecha_hora_inicio, fecha_hora_fin]
         
-        # Verificar que todas las órdenes de laboreo seleccionadas tengan fechas
-        for numero_lote, ordenes_list in self.ordenes_laboreo_por_lote.items():
-            for orden in ordenes_list:
-                clave = self._generar_clave_laboreo(
-                    numero_lote,
-                    [orden.tipo_laboreo.nombre, orden.momento_laboreo.nombre]
-                )
-                if clave not in fechas_map:
-                    return []  # Falta fecha para algún laboreo seleccionado
+        self.fechas_por_laboreo = fechas_map
         
-        self.tomar_duracion_laboreo(fechas_map)
         return self.buscar_empleados()
-    
-    def _generar_clave_laboreo(self, numero_lote: int, laboreo: List[str]) -> str:
-        return f"{numero_lote}|{laboreo[0]}|{laboreo[1]}"
-    
-    def tomar_duracion_laboreo(self, fechas_por_laboreo: Dict[str, List[datetime]]):
-        self.fechas_por_laboreo = fechas_por_laboreo
     
     def buscar_empleados(self) -> List[EmpleadoResponse]:
         return [
@@ -259,16 +242,6 @@ class GestorLaboreos:
                 )
                 empleados_map[clave] = empleado
         
-        # Verificar que todas las órdenes de laboreo seleccionadas tengan empleado
-        for numero_lote, ordenes_list in self.ordenes_laboreo_por_lote.items():
-            for orden in ordenes_list:
-                clave = self._generar_clave_laboreo(
-                    numero_lote,
-                    [orden.tipo_laboreo.nombre, orden.momento_laboreo.nombre]
-                )
-                if clave not in empleados_map:
-                    return  # Falta empleado para algún laboreo seleccionado
-        
         self.empleados_por_laboreo = empleados_map
     
     def validar_fechas(self, fecha_inicio: datetime, fecha_fin: datetime) -> bool:
@@ -285,14 +258,13 @@ class GestorLaboreos:
         if not self.campo_seleccionado or not self.empleados_por_laboreo:
             return
         
-        if not self.ordenes_laboreo_por_lote or not self.fechas_por_laboreo or not self.lotes_seleccionados:
+        if not self.ordenes_laboreo_por_lote or not self.fechas_por_laboreo:
             return
         
         self.campo_seleccionado.crear_laboreos_para_proyecto(
             self.fechas_por_laboreo,
             self.empleados_por_laboreo,
-            self.ordenes_laboreo_por_lote,
-            self.lotes_seleccionados
+            self.ordenes_laboreo_por_lote
         )
     
     def validar_tipo_laboreo(self) -> bool:

@@ -69,7 +69,7 @@ public class PantAdmLaboreos {
     // fin del laboreo para cada combinación de lote + laboreo.
     @PostMapping("/fecha-hora")
     public ResponseEntity<?> tomarFechaHoraInicioFin(@RequestBody FechaHoraPorLoteRequest request) {
-        List<EmpleadoResponse> empleados = gestorLaboreos.tomarFechaHoraInicioFin(
+        List<EmpleadoResponse> empleados = gestorLaboreos.tomarDuracionLaboreo(
                 request.getFechasPorLaboreo());
 
         if (empleados.isEmpty()) {

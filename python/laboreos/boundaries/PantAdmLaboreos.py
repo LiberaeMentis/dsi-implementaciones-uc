@@ -107,7 +107,7 @@ def enviar_fecha_hora(request):
         )
     
     gestor = get_gestor()
-    empleados = gestor.tomar_fecha_hora_inicio_fin(fechas_convertidas)
+    empleados = gestor.tomar_duracion_laboreo(fechas_convertidas)
     
     if not empleados:
         return Response(

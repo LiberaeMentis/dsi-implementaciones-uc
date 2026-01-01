@@ -48,7 +48,7 @@ public class GestorLaboreos {
     private Campo campoSeleccionado;
     private List<Lote> lotesSeleccionados;
     private Cultivo cultivoDeLaboreo;
-    private Map<Integer, List<OrdenDeLaboreo>> ordenesLaboreoPorLote;
+    private Map<Lote, List<OrdenDeLaboreo>> ordenesLaboreoPorLote;
     // Mapa donde la clave es "numeroLote|tipoLaboreo|momentoLaboreo" y el valor es [fechaHoraInicio, fechaHoraFin]
     private Map<String, LocalDateTime[]> fechasPorLaboreo;
     // Mapa donde la clave es "numeroLote|tipoLaboreo|momentoLaboreo" y el valor es el Empleado
@@ -378,7 +378,7 @@ public class GestorLaboreos {
                     .orElse(null);
             
             if (orden != null) {
-                ordenesLaboreoPorLote.computeIfAbsent(numeroLote, k -> new ArrayList<>()).add(orden);
+                ordenesLaboreoPorLote.computeIfAbsent(lote, k -> new ArrayList<>()).add(orden);
             }
         });
     }
@@ -394,52 +394,26 @@ public class GestorLaboreos {
                 .collect(Collectors.toList());
     }
 
-    public List<EmpleadoResponse> tomarFechaHoraInicioFin(List<FechaHoraPorLoteRequest.FechaHoraPorLaboreo> fechasPorLaboreo) {
+    private String generarClaveLaboreo(Integer numeroLote, String[] laboreo) {
+        return numeroLote + "|" + laboreo[0] + "|" + laboreo[1];
+    }
+
+    public List<EmpleadoResponse> tomarDuracionLaboreo(List<FechaHoraPorLoteRequest.FechaHoraPorLaboreo> fechasPorLaboreo) {
         if (fechasPorLaboreo == null || fechasPorLaboreo.isEmpty()) {
             return new ArrayList<>();
         }
 
-        // Validar que todas las combinaciones lote+laboreo seleccionadas tengan fechas
         Map<String, LocalDateTime[]> fechasMap = new HashMap<>();
         
         for (FechaHoraPorLoteRequest.FechaHoraPorLaboreo fechaHora : fechasPorLaboreo) {
-            // Validar fechas
-            if (!validarFechas(fechaHora.getFechaHoraInicio(), fechaHora.getFechaHoraFin())) {
-                return new ArrayList<>();
-            }
-            
             // Crear clave compuesta: numeroLote|tipoLaboreo|momentoLaboreo
             String clave = generarClaveLaboreo(fechaHora.getNumeroLote(), fechaHora.getLaboreo());
             // Convertir a estructura simple: array con [fechaHoraInicio, fechaHoraFin]
             fechasMap.put(clave, new LocalDateTime[]{fechaHora.getFechaHoraInicio(), fechaHora.getFechaHoraFin()});
         }
 
-        // Verificar que todas las órdenes de laboreo seleccionadas tengan fechas
-        for (Map.Entry<Integer, List<OrdenDeLaboreo>> entry : ordenesLaboreoPorLote.entrySet()) {
-            Integer numeroLote = entry.getKey();
-            for (OrdenDeLaboreo orden : entry.getValue()) {
-                String clave = generarClaveLaboreo(numeroLote, 
-                    new String[]{orden.conocerTipoLaboreo().getNombre(), orden.conocerMomentoLaboreo().getNombre()});
-                if (!fechasMap.containsKey(clave)) {
-                    return new ArrayList<>(); // Falta fecha para algún laboreo seleccionado
-                }
-            }
-        }
+        this.fechasPorLaboreo = fechasMap;
 
-        tomarDuracionLaboreo(fechasMap);
-
-        return buscarEmpleados();
-    }
-
-    private String generarClaveLaboreo(Integer numeroLote, String[] laboreo) {
-        return numeroLote + "|" + laboreo[0] + "|" + laboreo[1];
-    }
-
-    private void tomarDuracionLaboreo(Map<String, LocalDateTime[]> fechasPorLaboreo) {
-        this.fechasPorLaboreo = fechasPorLaboreo;
-    }
-
-    public List<EmpleadoResponse> tomarSeleccionEmpleado() {
         return buscarEmpleados();
     }
 
@@ -462,18 +436,6 @@ public class GestorLaboreos {
                 // Crear clave compuesta: numeroLote|tipoLaboreo|momentoLaboreo
                 String clave = generarClaveLaboreo(empleadoPorLaboreo.getNumeroLote(), empleadoPorLaboreo.getLaboreo());
                 empleadosMap.put(clave, empleado);
-            }
-        }
-
-        // Verificar que todas las órdenes de laboreo seleccionadas tengan empleado
-        for (Map.Entry<Integer, List<OrdenDeLaboreo>> entry : ordenesLaboreoPorLote.entrySet()) {
-            Integer numeroLote = entry.getKey();
-            for (OrdenDeLaboreo orden : entry.getValue()) {
-                String clave = generarClaveLaboreo(numeroLote, 
-                    new String[]{orden.conocerTipoLaboreo().getNombre(), orden.conocerMomentoLaboreo().getNombre()});
-                if (!empleadosMap.containsKey(clave)) {
-                    return; // Falta empleado para algún laboreo seleccionado
-                }
             }
         }
 
@@ -525,10 +487,10 @@ public class GestorLaboreos {
     }
 
     private void crearLaboreos() {
-        if (campoSeleccionado == null || empleadosPorLaboreo == null || empleadosPorLaboreo.isEmpty() || ordenesLaboreoPorLote == null || ordenesLaboreoPorLote.isEmpty() || fechasPorLaboreo == null || fechasPorLaboreo.isEmpty() || lotesSeleccionados == null) {
+        if (campoSeleccionado == null || empleadosPorLaboreo == null || empleadosPorLaboreo.isEmpty() || ordenesLaboreoPorLote == null || ordenesLaboreoPorLote.isEmpty() || fechasPorLaboreo == null || fechasPorLaboreo.isEmpty()) {
             return;
         }
-        campoSeleccionado.crearLaboreosParaProyecto(fechasPorLaboreo, empleadosPorLaboreo, ordenesLaboreoPorLote, lotesSeleccionados);
+        campoSeleccionado.crearLaboreosParaProyecto(fechasPorLaboreo, empleadosPorLaboreo, ordenesLaboreoPorLote);
     }
 
     public void tomarOpcionFinalizar() {

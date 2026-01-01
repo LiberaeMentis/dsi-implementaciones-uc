@@ -67,37 +67,34 @@ public class Campo {
 
     // fechasPorLaboreo: clave = "numeroLote|tipoLaboreo|momentoLaboreo", valor = [fechaHoraInicio, fechaHoraFin]
     // empleadosPorLaboreo: clave = "numeroLote|tipoLaboreo|momentoLaboreo", valor = Empleado
-    public void crearLaboreosParaProyecto(Map<String, LocalDateTime[]> fechasPorLaboreo, Map<String, Empleado> empleadosPorLaboreo, Map<Integer, List<OrdenDeLaboreo>> ordenesLaboreoPorLote, List<Lote> lotesSeleccionados) {
-        lotesSeleccionados.forEach(lote -> {
+    public void crearLaboreosParaProyecto(Map<String, LocalDateTime[]> fechasPorLaboreo, Map<String, Empleado> empleadosPorLaboreo, Map<Lote, List<OrdenDeLaboreo>> ordenesLaboreoPorLote) {
+        ordenesLaboreoPorLote.forEach((lote, ordenesLaboreo) -> {
             Integer numeroLote = lote.getNumero();
-            List<OrdenDeLaboreo> ordenesLaboreo = ordenesLaboreoPorLote.get(numeroLote);
             
-            if (ordenesLaboreo != null && !ordenesLaboreo.isEmpty()) {
-                // Agrupar órdenes por sus fechas y empleado (pueden tener fechas y empleados diferentes)
-                Map<String, List<OrdenDeLaboreo>> ordenesPorFechaYEmpleado = new HashMap<>();
-                Map<String, LocalDateTime[]> fechasPorGrupo = new HashMap<>();
-                Map<String, Empleado> empleadosPorGrupo = new HashMap<>();
-                
-                for (OrdenDeLaboreo orden : ordenesLaboreo) {
-                    String clave = numeroLote + "|" + orden.conocerTipoLaboreo().getNombre() + "|" + orden.conocerMomentoLaboreo().getNombre();
-                    LocalDateTime[] fechas = fechasPorLaboreo.get(clave);
-                    Empleado empleado = empleadosPorLaboreo.get(clave);
-                    if (fechas != null && fechas.length == 2 && empleado != null) {
-                        // Crear clave para agrupar por fechas y empleado (inicio, fin y empleado)
-                        String claveFechaYEmpleado = fechas[0].toString() + "|" + fechas[1].toString() + "|" + empleado.getNombre() + "|" + empleado.getApellido();
-                        ordenesPorFechaYEmpleado.computeIfAbsent(claveFechaYEmpleado, k -> new ArrayList<>()).add(orden);
-                        fechasPorGrupo.putIfAbsent(claveFechaYEmpleado, fechas);
-                        empleadosPorGrupo.putIfAbsent(claveFechaYEmpleado, empleado);
-                    }
+            // Agrupar órdenes por sus fechas y empleado (pueden tener fechas y empleados diferentes)
+            Map<String, List<OrdenDeLaboreo>> ordenesPorFechaYEmpleado = new HashMap<>();
+            Map<String, LocalDateTime[]> fechasPorGrupo = new HashMap<>();
+            Map<String, Empleado> empleadosPorGrupo = new HashMap<>();
+            
+            for (OrdenDeLaboreo orden : ordenesLaboreo) {
+                String clave = numeroLote + "|" + orden.conocerTipoLaboreo().getNombre() + "|" + orden.conocerMomentoLaboreo().getNombre();
+                LocalDateTime[] fechas = fechasPorLaboreo.get(clave);
+                Empleado empleado = empleadosPorLaboreo.get(clave);
+                if (fechas != null && fechas.length == 2 && empleado != null) {
+                    // Crear clave para agrupar por fechas y empleado (inicio, fin y empleado)
+                    String claveFechaYEmpleado = fechas[0].toString() + "|" + fechas[1].toString() + "|" + empleado.getNombre() + "|" + empleado.getApellido();
+                    ordenesPorFechaYEmpleado.computeIfAbsent(claveFechaYEmpleado, k -> new ArrayList<>()).add(orden);
+                    fechasPorGrupo.putIfAbsent(claveFechaYEmpleado, fechas);
+                    empleadosPorGrupo.putIfAbsent(claveFechaYEmpleado, empleado);
                 }
-                
-                // Crear laboreos agrupados por fechas y empleado usando el método existente
-                ordenesPorFechaYEmpleado.forEach((claveFechaYEmpleado, ordenesGrupo) -> {
-                    LocalDateTime[] fechas = fechasPorGrupo.get(claveFechaYEmpleado);
-                    Empleado empleado = empleadosPorGrupo.get(claveFechaYEmpleado);
-                    lote.crearLaboreos(fechas[0], fechas[1], empleado, ordenesGrupo);
-                });
             }
+            
+            // Crear laboreos agrupados por fechas y empleado usando el método existente
+            ordenesPorFechaYEmpleado.forEach((claveFechaYEmpleado, ordenesGrupo) -> {
+                LocalDateTime[] fechas = fechasPorGrupo.get(claveFechaYEmpleado);
+                Empleado empleado = empleadosPorGrupo.get(claveFechaYEmpleado);
+                lote.crearLaboreos(fechas[0], fechas[1], empleado, ordenesGrupo);
+            });
         });
     }
 }

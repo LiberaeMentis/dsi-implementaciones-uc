@@ -67,37 +67,35 @@ class Campo(models.Model):
     
     # fechas_por_laboreo: clave = "numeroLote|tipoLaboreo|momentoLaboreo", valor = [fechaHoraInicio, fechaHoraFin]
     # empleados_por_laboreo: clave = "numeroLote|tipoLaboreo|momentoLaboreo", valor = Empleado
-    def crear_laboreos_para_proyecto(self, fechas_por_laboreo, empleados_por_laboreo, ordenes_laboreo_por_lote, lotes_seleccionados):
-        for lote in lotes_seleccionados:
+    def crear_laboreos_para_proyecto(self, fechas_por_laboreo, empleados_por_laboreo, ordenes_laboreo_por_lote):
+        for lote, ordenes_list in ordenes_laboreo_por_lote.items():
             numero_lote = lote.numero
-            ordenes_list = ordenes_laboreo_por_lote.get(numero_lote)
             
-            if ordenes_list:
-                # Agrupar órdenes por sus fechas y empleado (pueden tener fechas y empleados diferentes)
-                ordenes_por_fecha_y_empleado = {}
-                fechas_por_grupo = {}
-                empleados_por_grupo = {}
-                
-                for orden in ordenes_list:
-                    clave = f"{numero_lote}|{orden.tipo_laboreo.nombre}|{orden.momento_laboreo.nombre}"
-                    fechas = fechas_por_laboreo.get(clave)
-                    empleado = empleados_por_laboreo.get(clave)
-                    if fechas and len(fechas) == 2 and empleado:
-                        # Crear clave para agrupar por fechas y empleado (inicio, fin y empleado)
-                        clave_fecha_y_empleado = f"{fechas[0]}|{fechas[1]}|{empleado.nombre}|{empleado.apellido}"
-                        if clave_fecha_y_empleado not in ordenes_por_fecha_y_empleado:
-                            ordenes_por_fecha_y_empleado[clave_fecha_y_empleado] = []
-                        ordenes_por_fecha_y_empleado[clave_fecha_y_empleado].append(orden)
-                        if clave_fecha_y_empleado not in fechas_por_grupo:
-                            fechas_por_grupo[clave_fecha_y_empleado] = fechas
-                        if clave_fecha_y_empleado not in empleados_por_grupo:
-                            empleados_por_grupo[clave_fecha_y_empleado] = empleado
-                
-                # Crear laboreos agrupados por fechas y empleado usando el método existente
-                proyecto = lote.conocer_proyecto_de_cultivo_vigente()
-                if proyecto:
-                    for clave_fecha_y_empleado, ordenes_grupo in ordenes_por_fecha_y_empleado.items():
-                        fechas = fechas_por_grupo[clave_fecha_y_empleado]
-                        empleado = empleados_por_grupo[clave_fecha_y_empleado]
-                        proyecto.crear_laboreos(fechas[0], fechas[1], empleado, ordenes_grupo)
+            # Agrupar órdenes por sus fechas y empleado (pueden tener fechas y empleados diferentes)
+            ordenes_por_fecha_y_empleado = {}
+            fechas_por_grupo = {}
+            empleados_por_grupo = {}
+            
+            for orden in ordenes_list:
+                clave = f"{numero_lote}|{orden.tipo_laboreo.nombre}|{orden.momento_laboreo.nombre}"
+                fechas = fechas_por_laboreo.get(clave)
+                empleado = empleados_por_laboreo.get(clave)
+                if fechas and len(fechas) == 2 and empleado:
+                    # Crear clave para agrupar por fechas y empleado (inicio, fin y empleado)
+                    clave_fecha_y_empleado = f"{fechas[0]}|{fechas[1]}|{empleado.nombre}|{empleado.apellido}"
+                    if clave_fecha_y_empleado not in ordenes_por_fecha_y_empleado:
+                        ordenes_por_fecha_y_empleado[clave_fecha_y_empleado] = []
+                    ordenes_por_fecha_y_empleado[clave_fecha_y_empleado].append(orden)
+                    if clave_fecha_y_empleado not in fechas_por_grupo:
+                        fechas_por_grupo[clave_fecha_y_empleado] = fechas
+                    if clave_fecha_y_empleado not in empleados_por_grupo:
+                        empleados_por_grupo[clave_fecha_y_empleado] = empleado
+            
+            # Crear laboreos agrupados por fechas y empleado usando el método existente
+            proyecto = lote.conocer_proyecto_de_cultivo_vigente()
+            if proyecto:
+                for clave_fecha_y_empleado, ordenes_grupo in ordenes_por_fecha_y_empleado.items():
+                    fechas = fechas_por_grupo[clave_fecha_y_empleado]
+                    empleado = empleados_por_grupo[clave_fecha_y_empleado]
+                    proyecto.crear_laboreos(fechas[0], fechas[1], empleado, ordenes_grupo)
 
