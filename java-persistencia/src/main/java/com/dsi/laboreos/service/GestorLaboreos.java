@@ -327,7 +327,33 @@ public class GestorLaboreos {
         if (campoSeleccionado == null || empleadosPorLaboreo == null || empleadosPorLaboreo.isEmpty() || ordenesLaboreoPorLote == null || ordenesLaboreoPorLote.isEmpty() || fechasPorLaboreo == null || fechasPorLaboreo.isEmpty()) {
             return;
         }
-        campoSeleccionado.crearLaboreosParaProyecto(fechasPorLaboreo, empleadosPorLaboreo, ordenesLaboreoPorLote);
+        
+        // Pre-procesar: asociar cada orden con sus fechas y empleado
+        // Convertir a arrays de Object: [fechaInicio, fechaFin, empleado, orden]
+        Map<Lote, List<Object[]>> laboreosPorLote = new HashMap<>();
+        
+        ordenesLaboreoPorLote.forEach((lote, ordenesLaboreo) -> {
+            Integer numeroLote = lote.getNumero();
+            List<Object[]> laboreos = new ArrayList<>();
+            
+            for (OrdenDeLaboreo orden : ordenesLaboreo) {
+                String clave = generarClaveLaboreo(numeroLote, 
+                    new String[]{orden.conocerTipoLaboreo().getNombre(), orden.conocerMomentoLaboreo().getNombre()});
+                LocalDateTime[] fechas = fechasPorLaboreo.get(clave);
+                Empleado empleado = empleadosPorLaboreo.get(clave);
+                
+                if (fechas != null && fechas.length == 2 && empleado != null) {
+                    // Array: [fechaInicio, fechaFin, empleado, orden]
+                    laboreos.add(new Object[]{fechas[0], fechas[1], empleado, orden});
+                }
+            }
+            
+            if (!laboreos.isEmpty()) {
+                laboreosPorLote.put(lote, laboreos);
+            }
+        });
+        
+        campoSeleccionado.crearLaboreosParaProyecto(laboreosPorLote);
         campoRepository.save(campoSeleccionado);
     }
 

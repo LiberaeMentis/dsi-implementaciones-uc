@@ -469,12 +469,6 @@ public class GestorLaboreos {
         }
         return !tipo.getNombre().equals("Siembra") && !tipo.getNombre().equals("Cosecha");
     }
-
-    public Boolean tomarConfirmacion() {
-        crearLaboreos();
-        return validarTipoLaboreo();
-    }
-
     // Nota: se agregan los métodos esSiembra() y esCosecha() para validar que el tipo de laboreo no sea Siembra ni Cosecha.
     private Boolean validarTipoLaboreo() {
         if (ordenesLaboreoPorLote == null || ordenesLaboreoPorLote.isEmpty()) {
@@ -486,11 +480,56 @@ public class GestorLaboreos {
                 .allMatch(orden -> !orden.esSiembra() && !orden.esCosecha());
     }
 
+    public Boolean tomarConfirmacion() {
+        crearLaboreos();
+        return validarTipoLaboreo();
+    }
+
+    /**
+     * Pre-procesa las órdenes de laboreo por lote, asociando cada orden con sus fechas y empleado,
+     * luego delega al Campo la creación de los laboreos.
+     * 
+     * El proceso es:
+     * 1. Para cada lote, obtiene sus órdenes de laboreo seleccionadas
+     * 2. Para cada orden, busca sus fechas y empleado asociados
+     * 3. Crea una entrada individual por cada orden con sus fechas y empleado
+     * 4. Pasa al Campo la información para que cree los laboreos
+     */
     private void crearLaboreos() {
-        if (campoSeleccionado == null || empleadosPorLaboreo == null || empleadosPorLaboreo.isEmpty() || ordenesLaboreoPorLote == null || ordenesLaboreoPorLote.isEmpty() || fechasPorLaboreo == null || fechasPorLaboreo.isEmpty()) {
-            return;
-        }
-        campoSeleccionado.crearLaboreosParaProyecto(fechasPorLaboreo, empleadosPorLaboreo, ordenesLaboreoPorLote);
+        // Mapa final: Lote -> Lista de arrays con información de laboreos a crear
+        // Cada array contiene: [fechaInicio, fechaFin, empleado, orden]
+        Map<Lote, List<Object[]>> laboreosPorLote = new HashMap<>();
+        
+        // Procesar cada lote con sus órdenes de laboreo seleccionadas
+        ordenesLaboreoPorLote.forEach((lote, ordenesLaboreo) -> {
+            Integer numeroLote = lote.getNumero();
+            List<Object[]> laboreos = new ArrayList<>();
+            
+            // Para cada orden del lote, buscar sus fechas y empleado asociados
+            for (OrdenDeLaboreo orden : ordenesLaboreo) {
+                // Generar clave compuesta: "numeroLote|tipoLaboreo|momentoLaboreo"
+                String clave = generarClaveLaboreo(numeroLote, 
+                    new String[]{orden.conocerTipoLaboreo().getNombre(), orden.conocerMomentoLaboreo().getNombre()});
+                
+                // Buscar las fechas y empleado asociados a esta orden
+                LocalDateTime[] fechas = fechasPorLaboreo.get(clave);
+                Empleado empleado = empleadosPorLaboreo.get(clave);
+                
+                // Si la orden tiene fechas y empleado válidos, crear array con la información
+                // Array: [fechaInicio, fechaFin, empleado, orden]
+                if (fechas != null && fechas.length == 2 && empleado != null) {
+                    laboreos.add(new Object[]{fechas[0], fechas[1], empleado, orden});
+                }
+            }
+            
+            // Solo agregar el lote si tiene laboreos válidos para crear
+            if (!laboreos.isEmpty()) {
+                laboreosPorLote.put(lote, laboreos);
+            }
+        });
+        
+        // Le mandamos al Campo la información para que cree los laboreos
+        campoSeleccionado.crearLaboreosParaProyecto(laboreosPorLote);
     }
 
     public void tomarOpcionFinalizar() {

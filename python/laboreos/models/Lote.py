@@ -35,4 +35,10 @@ class Lote(models.Model):
     def buscar_laboreos_realizados(self):
         proyecto = self.conocer_proyecto_de_cultivo_vigente()
         return proyecto.buscar_laboreos_realizados() if proyecto else []
+    
+    # Recibe los datos de un laboreo ya casteados y delega al proyecto vigente
+    def crear_laboreos(self, fecha_inicio, fecha_fin, empleado, orden):
+        proyecto = self.conocer_proyecto_de_cultivo_vigente()
+        if proyecto:
+            proyecto.crear_laboreos(fecha_inicio, fecha_fin, empleado, orden)
 

@@ -261,11 +261,30 @@ class GestorLaboreos:
         if not self.ordenes_laboreo_por_lote or not self.fechas_por_laboreo:
             return
         
-        self.campo_seleccionado.crear_laboreos_para_proyecto(
-            self.fechas_por_laboreo,
-            self.empleados_por_laboreo,
-            self.ordenes_laboreo_por_lote
-        )
+        # Pre-procesar: asociar cada orden con sus fechas y empleado
+        # Convertir a listas de tuplas: (fecha_inicio, fecha_fin, empleado, orden)
+        laboreos_por_lote: Dict[Lote, List[tuple]] = {}
+        
+        for lote, ordenes_laboreo in self.ordenes_laboreo_por_lote.items():
+            numero_lote = lote.numero
+            laboreos = []
+            
+            for orden in ordenes_laboreo:
+                clave = self._generar_clave_laboreo(
+                    numero_lote,
+                    [orden.tipo_laboreo.nombre, orden.momento_laboreo.nombre]
+                )
+                fechas = self.fechas_por_laboreo.get(clave)
+                empleado = self.empleados_por_laboreo.get(clave)
+                
+                if fechas and len(fechas) == 2 and empleado:
+                    # Tupla: (fecha_inicio, fecha_fin, empleado, orden)
+                    laboreos.append((fechas[0], fechas[1], empleado, orden))
+            
+            if laboreos:
+                laboreos_por_lote[lote] = laboreos
+        
+        self.campo_seleccionado.crear_laboreos_para_proyecto(laboreos_por_lote)
     
     def validar_tipo_laboreo(self) -> bool:
         if not self.ordenes_laboreo_por_lote:

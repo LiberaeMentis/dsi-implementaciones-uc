@@ -70,18 +70,17 @@ public class ProyectoDeCultivo {
         return cultivo.getNombre();
     }
 
-    public void crearLaboreos(LocalDateTime fechaHoraInicio, LocalDateTime fechaHoraFin, Empleado empleado, List<OrdenDeLaboreo> ordenesLaboreo) {
-        ordenesLaboreo.forEach(orden -> {
-            Laboreo laboreo = new Laboreo(
-                    fechaHoraInicio.toLocalDate(),
-                    fechaHoraFin.toLocalDate(),
-                    fechaHoraInicio.toLocalTime(),
-                    fechaHoraFin.toLocalTime(),
-                    empleado,
-                    orden
-            );
-            this.laboreos.add(laboreo);
-        });
+    // Recibe los datos de un laboreo ya casteados y crea el laboreo
+    public void crearLaboreos(LocalDateTime fechaInicio, LocalDateTime fechaFin, Empleado empleado, OrdenDeLaboreo orden) {
+        Laboreo nuevoLaboreo = new Laboreo(
+                fechaInicio.toLocalDate(),
+                fechaFin.toLocalDate(),
+                fechaInicio.toLocalTime(),
+                fechaFin.toLocalTime(),
+                empleado,
+                orden
+        );
+        this.laboreos.add(nuevoLaboreo);
     }
 }
 

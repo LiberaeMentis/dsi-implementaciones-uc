@@ -121,10 +121,11 @@ public class Lote {
         return proyectoVigente != null ? proyectoVigente.mostrarCultivo() : null;
     }
 
-    public void crearLaboreos(LocalDateTime fechaHoraInicio, LocalDateTime fechaHoraFin, Empleado empleado, List<OrdenDeLaboreo> ordenesLaboreo) {
+    // Recibe los datos de un laboreo ya casteados y delega al proyecto vigente
+    public void crearLaboreos(LocalDateTime fechaInicio, LocalDateTime fechaFin, Empleado empleado, OrdenDeLaboreo orden) {
         ProyectoDeCultivo proyectoVigente = conocerProyectoDeCultivoVigente();
         if (proyectoVigente != null) {
-            proyectoVigente.crearLaboreos(fechaHoraInicio, fechaHoraFin, empleado, ordenesLaboreo);
+            proyectoVigente.crearLaboreos(fechaInicio, fechaFin, empleado, orden);
         }
     }
 }

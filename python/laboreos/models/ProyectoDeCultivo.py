@@ -40,16 +40,16 @@ class ProyectoDeCultivo(models.Model):
     def mostrar_cultivo(self):
         return self.cultivo.nombre
     
-    def crear_laboreos(self, fecha_hora_inicio, fecha_hora_fin, empleado, ordenes_laboreo_list):
+    # Recibe los datos de un laboreo ya casteados y crea el laboreo
+    def crear_laboreos(self, fecha_inicio, fecha_fin, empleado, orden):
         from .Laboreo import Laboreo
-        for orden in ordenes_laboreo_list:
-            Laboreo.objects.create(
-                proyecto_cultivo=self,
-                orden_laboreo=orden,
-                empleado=empleado,
-                fecha_inicio=fecha_hora_inicio.date(),
-                fecha_fin=fecha_hora_fin.date(),
-                hora_inicio=fecha_hora_inicio.time(),
-                hora_fin=fecha_hora_fin.time()
-            )
+        Laboreo.objects.create(
+            proyecto_cultivo=self,
+            orden_laboreo=orden,
+            empleado=empleado,
+            fecha_inicio=fecha_inicio.date(),
+            fecha_fin=fecha_fin.date(),
+            hora_inicio=fecha_inicio.time(),
+            hora_fin=fecha_fin.time()
+        )
 
